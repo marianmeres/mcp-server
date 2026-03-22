@@ -70,7 +70,7 @@ For **Claude Code**, add to your project's `.claude.json` or `.claude/settings.j
 ```json
 {
     "mcpServers": {
-        "my-packages": {
+        "@marianmeres/mcp-server": {
             "command": "deno",
             "args": [
                 "run", "-A",
