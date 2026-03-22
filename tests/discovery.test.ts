@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { discoverPackageTools } from "../src/lib/discovery.ts";
+import { scanPackageDirs, getPackageInfo } from "../src/lib/fs-utils.ts";
 import { join } from "@std/path";
 
 Deno.test("discoverPackageTools - discovers tools from mcp.ts", async () => {
@@ -131,13 +132,69 @@ Deno.test("discoverPackageTools - marker file filter", async () => {
 	}
 
 	// only pkg-b has the marker
-	await Deno.writeTextFile(join(tmpDir, "pkg-b", ".mcp-include"), "");
+	await Deno.writeTextFile(join(tmpDir, "pkg-b", "mcp-include.txt"), "");
 
 	const tools = await discoverPackageTools([
-		{ path: tmpDir, marker: ".mcp-include" },
+		{ path: tmpDir, marker: "mcp-include.txt" },
 	]);
 	assertEquals(tools.length, 1);
 	assertEquals(tools[0].namespacedName, "pkg-b:t");
+
+	await Deno.remove(tmpDir, { recursive: true });
+});
+
+Deno.test("scanPackageDirs - marker file content is yielded as markerContent", async () => {
+	const tmpDir = await Deno.makeTempDir();
+	await Deno.mkdir(join(tmpDir, "pkg-a"));
+	await Deno.mkdir(join(tmpDir, "pkg-b"));
+
+	// pkg-a: marker with description content
+	await Deno.writeTextFile(
+		join(tmpDir, "pkg-a", "mcp-include.txt"),
+		"A useful package for doing things",
+	);
+	// pkg-b: empty marker (still opts in, but no description)
+	await Deno.writeTextFile(join(tmpDir, "pkg-b", "mcp-include.txt"), "");
+
+	const results: { name: string; markerContent?: string }[] = [];
+	for await (const dir of scanPackageDirs({ path: tmpDir, marker: "mcp-include.txt" })) {
+		results.push({ name: dir.name, markerContent: dir.markerContent });
+	}
+
+	results.sort((a, b) => a.name.localeCompare(b.name));
+	assertEquals(results.length, 2);
+	assertEquals(results[0].name, "pkg-a");
+	assertEquals(results[0].markerContent, "A useful package for doing things");
+	assertEquals(results[1].name, "pkg-b");
+	assertEquals(results[1].markerContent, undefined);
+
+	await Deno.remove(tmpDir, { recursive: true });
+});
+
+Deno.test("getPackageInfo - markerContent used as fallback description", async () => {
+	const tmpDir = await Deno.makeTempDir();
+	await Deno.mkdir(join(tmpDir, "my-pkg"));
+
+	// no deno.json, so description would be empty without marker content
+	const info = await getPackageInfo(
+		join(tmpDir, "my-pkg"),
+		"my-pkg",
+		"Description from marker",
+	);
+	assertEquals(info.description, "Description from marker");
+	assertEquals(info.name, "my-pkg");
+
+	// now add a deno.json with description — it should take precedence
+	await Deno.writeTextFile(
+		join(tmpDir, "my-pkg", "deno.json"),
+		JSON.stringify({ name: "my-pkg", description: "From deno.json" }),
+	);
+	const info2 = await getPackageInfo(
+		join(tmpDir, "my-pkg"),
+		"my-pkg",
+		"Description from marker",
+	);
+	assertEquals(info2.description, "From deno.json");
 
 	await Deno.remove(tmpDir, { recursive: true });
 });

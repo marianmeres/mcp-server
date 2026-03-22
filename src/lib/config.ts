@@ -20,7 +20,7 @@ export interface PackageRootConfig {
 	include?: string[];
 	/** If set, skip directories with these names. Mutually exclusive with `include`. */
 	exclude?: string[];
-	/** If set, only scan directories that contain a file with this name (e.g. `.mcp-include`). */
+	/** If set, only scan directories that contain a file with this name (e.g. `mcp-include.txt`). */
 	marker?: string;
 }
 

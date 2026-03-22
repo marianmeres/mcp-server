@@ -39,6 +39,7 @@ export interface PackageInfo {
 export async function getPackageInfo(
 	dirPath: string,
 	dirName: string,
+	markerContent?: string,
 ): Promise<PackageInfo> {
 	const info: PackageInfo = { dirName, name: dirName, description: "" };
 
@@ -60,6 +61,11 @@ export async function getPackageInfo(
 		}
 	}
 
+	// Fall back to marker file content as description
+	if (!info.description && markerContent) {
+		info.description = markerContent;
+	}
+
 	return info;
 }
 
@@ -74,7 +80,7 @@ export async function getPackageInfo(
  */
 export async function* scanPackageDirs(
 	rootConfig: PackageRootConfig,
-): AsyncGenerator<{ name: string; path: string }> {
+): AsyncGenerator<{ name: string; path: string; markerContent?: string }> {
 	const { path: root, include, exclude, marker } = rootConfig;
 
 	try {
@@ -99,12 +105,18 @@ export async function* scanPackageDirs(
 
 			const dirPath = join(root, entry.name);
 
-			// marker file filter
-			if (marker && !(await fileExists(join(dirPath, marker)))) {
-				continue;
+			// marker file filter — also reads content for use as package description
+			if (marker) {
+				const content = await readTextFileSafe(join(dirPath, marker));
+				if (content === null) continue;
+				yield {
+					name: entry.name,
+					path: dirPath,
+					markerContent: content.trim() || undefined,
+				};
+			} else {
+				yield { name: entry.name, path: dirPath };
 			}
-
-			yield { name: entry.name, path: dirPath };
 		}
 	} catch (error) {
 		console.error(

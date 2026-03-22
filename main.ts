@@ -22,7 +22,7 @@ const server = new McpServer({
 // 1. Register built-in ecosystem tools
 registerBuiltinTools(server, config.packageRoots);
 console.error(
-	"Built-in tools: list-packages, get-package-docs, get-ecosystem-overview, search-docs, get-stack-recipe",
+	"Built-in tools: list-packages, get-package-docs, search-docs",
 );
 
 // 2. Discover and register package-provided tools
@@ -53,7 +53,7 @@ for (const { namespacedName, tool } of packageTools) {
 	);
 }
 
-const totalTools = 5 + packageTools.length;
+const totalTools = 3 + packageTools.length;
 console.error(`Total: ${totalTools} tools registered`);
 
 // 3. Start

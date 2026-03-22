@@ -54,7 +54,7 @@ interface McpToolDefinition {
 Each root supports three filtering modes (via `PackageRootConfig`):
 - `include: string[]` — only scan these directory names
 - `exclude: string[]` — skip these directory names
-- `marker: string` — only scan dirs containing this file (e.g. `.mcp-include`)
+- `marker: string` — only scan dirs containing this file (e.g. `mcp-include.txt`); file content, if any, is used as the package description
 - `include` and `exclude` are mutually exclusive; `marker` combines with either
 
 ### Tool Discovery (`src/lib/discovery.ts`)
@@ -68,13 +68,11 @@ Each root supports three filtering modes (via `PackageRootConfig`):
 - Default: `{dirName}:{toolName}` (e.g. `store:describe-api`)
 - On collision (same dir name in multiple roots): `{rootName}--{dirName}:{toolName}`
 
-### Built-in Tools (5)
+### Built-in Tools (3)
 Registered in `src/lib/builtin-tools.ts`:
 1. `list-packages` — scans roots, returns JSON array of package info
 2. `get-package-docs` — reads AGENTS.md, falls back to README.md
-3. `get-ecosystem-overview` — reads `mm-local-docs/ecosystem.md` from roots
-4. `search-docs` — full-text search, max 20 results, ±2 lines context
-5. `get-stack-recipe` — reads TEMPLATE.md or AGENTS.md from full-stack-app-template
+3. `search-docs` — full-text search, max 20 results, ±2 lines context
 
 ### stdout is Reserved
 All logging uses `console.error`. stdout is exclusively for MCP JSON-RPC protocol.

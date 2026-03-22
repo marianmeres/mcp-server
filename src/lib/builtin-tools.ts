@@ -43,7 +43,7 @@ export function registerBuiltinTools(
 				if (root && rootName !== root) continue;
 
 				for await (const dir of scanPackageDirs(rootConfig)) {
-					const info = await getPackageInfo(dir.path, dir.name);
+					const info = await getPackageInfo(dir.path, dir.name, dir.markerContent);
 					const hasAgentsDocs = await fileExists(
 						join(dir.path, "AGENTS.md"),
 					);
@@ -149,64 +149,7 @@ export function registerBuiltinTools(
 		},
 	);
 
-	// 3. get-ecosystem-overview
-	server.registerTool(
-		"get-ecosystem-overview",
-		{
-			description:
-				"Get the high-level ecosystem overview document that describes how all packages fit together",
-		},
-		async () => {
-			for (const rootConfig of packageRoots) {
-				const ecosystemPath = join(
-					rootConfig.path,
-					"mm-local-docs",
-					"ecosystem.md",
-				);
-				const content = await readTextFileSafe(ecosystemPath);
-				if (content) {
-					return {
-						content: [
-							{
-								type: "text" as const,
-								text: content,
-							},
-						],
-					};
-				}
-
-				const altPath = join(
-					rootConfig.path,
-					"marianmeres",
-					"mm-local-docs",
-					"ecosystem.md",
-				);
-				const altContent = await readTextFileSafe(altPath);
-				if (altContent) {
-					return {
-						content: [
-							{
-								type: "text" as const,
-								text: altContent,
-							},
-						],
-					};
-				}
-			}
-
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: "Ecosystem overview document not found",
-					},
-				],
-				isError: true,
-			};
-		},
-	);
-
-	// 4. search-docs
+	// 3. search-docs
 	server.registerTool(
 		"search-docs",
 		{
@@ -309,59 +252,4 @@ export function registerBuiltinTools(
 		},
 	);
 
-	// 5. get-stack-recipe
-	server.registerTool(
-		"get-stack-recipe",
-		{
-			description:
-				"Get the project template/recipe document for scaffolding a new full-stack application",
-		},
-		async () => {
-			for (const rootConfig of packageRoots) {
-				const templatePath = join(
-					rootConfig.path,
-					"full-stack-app-template",
-					"TEMPLATE.md",
-				);
-				const template = await readTextFileSafe(templatePath);
-				if (template) {
-					return {
-						content: [
-							{
-								type: "text" as const,
-								text: template,
-							},
-						],
-					};
-				}
-
-				const agentsPath = join(
-					rootConfig.path,
-					"full-stack-app-template",
-					"AGENTS.md",
-				);
-				const agents = await readTextFileSafe(agentsPath);
-				if (agents) {
-					return {
-						content: [
-							{
-								type: "text" as const,
-								text: agents,
-							},
-						],
-					};
-				}
-			}
-
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: "Stack recipe/template not found. The full-stack-app-template package may not exist yet.",
-					},
-				],
-				isError: true,
-			};
-		},
-	);
 }

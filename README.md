@@ -102,9 +102,7 @@ These tools are always available, regardless of whether any packages ship their 
 |------|-----------|-------------|
 | `list-packages` | `root?` (optional filter) | List all packages with names, descriptions, and tool availability |
 | `get-package-docs` | `packageName` (required) | Read a package's `AGENTS.md` (falls back to `README.md`) |
-| `get-ecosystem-overview` | none | Read the ecosystem overview document (`mm-local-docs/ecosystem.md`) |
 | `search-docs` | `query`, `caseSensitive?` | Full-text search across all package documentation (max 20 results) |
-| `get-stack-recipe` | none | Read the full-stack app template/recipe document |
 
 ## Adding Tools to a Package
 
@@ -136,6 +134,7 @@ Key points:
 - **`name`** — tool name (will be prefixed with the package directory name, e.g.
   `my-package:health-check`)
 - **`description`** — shown to the AI agent to help it decide when to use the tool
+  (see [Writing Effective Descriptions](#writing-effective-tool-descriptions) below)
 - **`params`** — a record of [Zod](https://zod.dev/) schemas defining the tool's
   parameters
 - **`handler`** — async function that receives validated parameters and returns a
@@ -153,6 +152,48 @@ interface McpToolDefinition {
     description: string;
     params: Record<string, z.ZodType>;
     handler: (args: Record<string, unknown>) => Promise<string>;
+}
+```
+
+## Writing Effective Tool Descriptions
+
+The `description` field is the single most important factor in whether the AI agent calls
+your tool correctly. The agent performs **semantic matching** between the user's natural
+language request and the available tool descriptions — it's essentially the contract
+between human intent and your code.
+
+**Why it matters:** When a user asks "What packages are available?", the agent scans all
+registered tool descriptions to find the best match. A tool with the description
+_"List all packages with names, descriptions, and tool availability"_ will be selected.
+A tool with _"Does package stuff"_ probably won't.
+
+**Guidelines:**
+
+- **Be specific** — describe what the tool does, what it returns, and when to use it.
+  _"Check if a service is healthy by hitting its /health endpoint"_ is much better than
+  _"Health check"_.
+- **Include key terms** the user is likely to say. If users might ask to "search",
+  "find", or "look up" something, mention those concepts.
+- **Avoid overlap** — if two tools have similar descriptions, the agent may pick the
+  wrong one. Make each description distinct.
+- **Describe parameters clearly** — use Zod's `.describe()` to explain each parameter.
+  This helps the agent figure out what values to pass.
+
+```typescript
+// ❌ Vague — agent won't know when to use this
+{
+    name: "do-thing",
+    description: "Processes data",
+    params: { input: z.string() },
+}
+
+// ✅ Specific — agent can match this to user intent
+{
+    name: "validate-config",
+    description: "Validate a package config file and report any errors or warnings",
+    params: {
+        path: z.string().describe("Absolute path to the config file to validate"),
+    },
 }
 ```
 
@@ -209,14 +250,25 @@ options:
 ```json
 {
     "packageRoots": [
-        { "path": "/path/to/packages", "marker": ".mcp-include" }
+        { "path": "/path/to/packages", "marker": "mcp-include.txt" }
     ]
 }
 ```
 
-With the marker approach, each package opts in by having an empty `.mcp-include` file
+With the marker approach, each package opts in by having a `mcp-include.txt` file
 at its root. This is the most decentralized option — each package decides for itself
 whether to be visible to the MCP server.
+
+**Bonus:** if the marker file has content, it is used as the **package description**
+(shown when the agent calls `list-packages`). This is useful when the package's
+`deno.json` or `package.json` doesn't have a `description` field. For example:
+
+```
+A reactive state management library with derived stores and persistence support
+```
+
+Description resolution order: `deno.json`/`package.json` `description` field →
+marker file content → empty string.
 
 **Combining modes** — plain strings and objects can be mixed. `marker` can combine with
 `include` or `exclude` (both conditions must pass). `include` and `exclude` are mutually
@@ -226,7 +278,7 @@ exclusive.
 {
     "packageRoots": [
         "/path/to/small-focused-root",
-        { "path": "/path/to/large-root", "marker": ".mcp-include" },
+        { "path": "/path/to/large-root", "marker": "mcp-include.txt" },
         { "path": "/path/to/another-root", "include": ["pkg-a", "pkg-b"] }
     ]
 }
