@@ -8,8 +8,10 @@
     "jsr:@std/fs@^1.0.22": "1.0.23",
     "jsr:@std/fs@^1.0.23": "1.0.23",
     "jsr:@std/internal@^1.0.12": "1.0.12",
+    "jsr:@std/path@*": "1.1.4",
     "jsr:@std/path@^1.1.4": "1.1.4",
     "npm:@modelcontextprotocol/sdk@^1.12.0": "1.27.1_zod@3.25.76",
+    "npm:zod@*": "3.25.76",
     "npm:zod@^3.24.0": "3.25.76"
   },
   "jsr": {
@@ -18,7 +20,7 @@
       "dependencies": [
         "jsr:@std/collections",
         "jsr:@std/fs@^1.0.22",
-        "jsr:@std/path"
+        "jsr:@std/path@^1.1.4"
       ]
     },
     "@std/assert@1.0.19": {
@@ -37,7 +39,7 @@
       "integrity": "3ecbae4ce4fee03b180fa710caff36bb5adb66631c46a6460aaad49515565a37",
       "dependencies": [
         "jsr:@std/internal",
-        "jsr:@std/path"
+        "jsr:@std/path@^1.1.4"
       ]
     },
     "@std/internal@1.0.12": {
