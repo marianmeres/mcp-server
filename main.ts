@@ -1,3 +1,12 @@
+/**
+ * Main entrypoint for the @marianmeres/mcp-server.
+ *
+ * Starts a stdio-based MCP server that discovers and registers tools
+ * from configured package roots.
+ *
+ * @module
+ */
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./src/lib/config.ts";
