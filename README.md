@@ -14,7 +14,7 @@ your packages, and it:
 2. **Provides built-in ecosystem tools** — lets the agent list packages, read docs,
    search across documentation, and more
 3. **Namespaces everything** — tools are prefixed with the package name
-   (e.g. `my-package:my-tool`) to avoid collisions
+   (e.g. `my-package.my-tool`) to avoid collisions
 
 The server communicates via **stdio transport** (JSON-RPC over stdin/stdout), which is the
 standard for local MCP servers. The MCP client (Claude Code, Cowork, etc.) spawns it as a
@@ -301,10 +301,10 @@ This way, different projects expose different sets of tools while sharing common
 
 Tools are namespaced by the package's directory name:
 
-- `my-package/mcp.ts` defines `health-check` -> registered as `my-package:health-check`
+- `my-package/mcp.ts` defines `health-check` -> registered as `my-package.health-check`
 
 If the same directory name appears under multiple roots (rare), the server detects the
-collision and uses a longer prefix: `root-name--package-name:tool-name`.
+collision and uses a longer prefix: `root-name--package-name.tool-name`.
 
 ## Running & Testing
 

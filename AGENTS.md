@@ -65,8 +65,8 @@ Each root supports three filtering modes (via `PackageRootConfig`):
 - Failed imports log to stderr and are skipped (no crash)
 
 ### Namespacing
-- Default: `{dirName}:{toolName}` (e.g. `store:describe-api`)
-- On collision (same dir name in multiple roots): `{rootName}--{dirName}:{toolName}`
+- Default: `{dirName}.{toolName}` (e.g. `store.describe-api`)
+- On collision (same dir name in multiple roots): `{rootName}--{dirName}.{toolName}`
 
 ### Built-in Tools (3)
 Registered in `src/lib/builtin-tools.ts`:
