@@ -26,7 +26,7 @@ import type { z } from "zod";
  * ```
  */
 export interface McpToolDefinition {
-	/** Tool name (will be namespaced by the server as `packageName.toolName`). */
+	/** Tool name (will be namespaced by the server as `packageName_toolName`). */
 	name: string;
 	/** Human-readable description shown to AI agents. */
 	description: string;

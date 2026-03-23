@@ -6,7 +6,7 @@ import { join } from "@std/path";
 
 /** A tool definition discovered from a package's `mcp.ts` file. */
 export interface DiscoveredTool {
-	/** Namespaced tool name (e.g. `"my-package.tool-name"`). */
+	/** Namespaced tool name (e.g. `"my-package_tool-name"`). */
 	namespacedName: string;
 	/** The original tool definition from the package. */
 	tool: McpToolDefinition;
@@ -22,7 +22,7 @@ export interface DiscoveredTool {
  * 2. Import each `mcp.ts`, validate exports, and namespace tools
  *
  * On collision (same dir name in multiple roots), tools are prefixed with
- * `rootName--dirName.toolName` instead of `dirName.toolName`.
+ * `rootName--dirName_toolName` instead of `dirName_toolName`.
  *
  * Import errors are logged to stderr and skipped (the server does not crash).
  */
@@ -85,7 +85,7 @@ export async function discoverPackageTools(
 						continue;
 					}
 					results.push({
-						namespacedName: `${prefix}.${tool.name}`,
+						namespacedName: `${prefix}_${tool.name}`,
 						tool,
 						sourcePath: mcpPath,
 					});

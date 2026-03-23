@@ -25,7 +25,7 @@ export const tools = [
 
 	const tools = await discoverPackageTools([{ path: tmpDir }]);
 	assertEquals(tools.length, 1);
-	assertEquals(tools[0].namespacedName, "test-pkg.hello");
+	assertEquals(tools[0].namespacedName, "test-pkg_hello");
 	assertEquals(tools[0].tool.description, "Says hello");
 
 	const result = await tools[0].tool.handler({ name: "World" });
@@ -46,7 +46,7 @@ Deno.test("discoverPackageTools - skips dirs without mcp.ts", async () => {
 
 	const tools = await discoverPackageTools([{ path: tmpDir }]);
 	assertEquals(tools.length, 1);
-	assertEquals(tools[0].namespacedName, "has-mcp.test");
+	assertEquals(tools[0].namespacedName, "has-mcp_test");
 
 	await Deno.remove(tmpDir, { recursive: true });
 });
@@ -96,7 +96,7 @@ Deno.test("discoverPackageTools - include filter", async () => {
 	]);
 	assertEquals(tools.length, 2);
 	const names = tools.map((t) => t.namespacedName).sort();
-	assertEquals(names, ["pkg-a.t", "pkg-c.t"]);
+	assertEquals(names, ["pkg-a_t", "pkg-c_t"]);
 
 	await Deno.remove(tmpDir, { recursive: true });
 });
@@ -116,7 +116,7 @@ Deno.test("discoverPackageTools - exclude filter", async () => {
 	]);
 	assertEquals(tools.length, 2);
 	const names = tools.map((t) => t.namespacedName).sort();
-	assertEquals(names, ["pkg-a.t", "pkg-c.t"]);
+	assertEquals(names, ["pkg-a_t", "pkg-c_t"]);
 
 	await Deno.remove(tmpDir, { recursive: true });
 });
@@ -138,7 +138,7 @@ Deno.test("discoverPackageTools - marker file filter", async () => {
 		{ path: tmpDir, marker: "mcp-include.txt" },
 	]);
 	assertEquals(tools.length, 1);
-	assertEquals(tools[0].namespacedName, "pkg-b.t");
+	assertEquals(tools[0].namespacedName, "pkg-b_t");
 
 	await Deno.remove(tmpDir, { recursive: true });
 });

@@ -14,7 +14,7 @@ your packages, and it:
 2. **Provides built-in ecosystem tools** — lets the agent list packages, read docs,
    search across documentation, and more
 3. **Namespaces everything** — tools are prefixed with the package name
-   (e.g. `my-package.my-tool`) to avoid collisions
+   (e.g. `my-package_my-tool`) to avoid collisions
 
 The server communicates via **stdio transport** (JSON-RPC over stdin/stdout), which is the
 standard for local MCP servers. The MCP client (Claude Code, Cowork, etc.) spawns it as a
@@ -65,12 +65,20 @@ Each "package root" is a directory whose immediate children are individual packa
 
 ### 2. Register with your MCP client
 
-For **Claude Code**, add to your project's `.claude.json` or `.claude/settings.json`:
+For **Claude Code** (globally, available in all projects):
+
+```bash
+claude mcp add --scope user my-mcp-server -- \
+    deno run -A jsr:@marianmeres/mcp-server --config /absolute/path/to/mcp.config.json
+```
+
+For **Claude Code** (project-scoped), create `.mcp.json` in the project root:
 
 ```json
 {
     "mcpServers": {
-        "@marianmeres/mcp-server": {
+        "my-mcp-server": {
+            "type": "stdio",
             "command": "deno",
             "args": [
                 "run", "-A",
@@ -82,8 +90,27 @@ For **Claude Code**, add to your project's `.claude.json` or `.claude/settings.j
 }
 ```
 
+For **VSCode** (Copilot etc.), register via the Command Palette
+("MCP: Add Server") or add to `~/Library/Application Support/Code/User/mcp.json`
+using the same format as above.
+
 For **Claude Desktop** (Cowork), add to
-`~/Library/Application Support/Claude/claude_desktop_config.json` using the same format.
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+    "mcpServers": {
+        "my-mcp-server": {
+            "command": "deno",
+            "args": [
+                "run", "-A",
+                "jsr:@marianmeres/mcp-server",
+                "--config", "/absolute/path/to/mcp.config.json"
+            ]
+        }
+    }
+}
+```
 
 ### 3. Start using it
 
@@ -132,7 +159,7 @@ export const tools: McpToolDefinition[] = [
 Key points:
 
 - **`name`** — tool name (will be prefixed with the package directory name, e.g.
-  `my-package:health-check`)
+  `my-package_health-check`)
 - **`description`** — shown to the AI agent to help it decide when to use the tool
   (see [Writing Effective Descriptions](#writing-effective-tool-descriptions) below)
 - **`params`** — a record of [Zod](https://zod.dev/) schemas defining the tool's
@@ -301,10 +328,13 @@ This way, different projects expose different sets of tools while sharing common
 
 Tools are namespaced by the package's directory name:
 
-- `my-package/mcp.ts` defines `health-check` -> registered as `my-package.health-check`
+- `my-package/mcp.ts` defines `health-check` → registered as `my-package_health-check`
 
 If the same directory name appears under multiple roots (rare), the server detects the
-collision and uses a longer prefix: `root-name--package-name.tool-name`.
+collision and uses a longer prefix: `root-name--package-name_tool-name`.
+
+> **Note:** MCP tool names may only contain `[a-z0-9_-]`. The server uses `_` (underscore)
+> as the namespace separator to comply with this constraint.
 
 ## Running & Testing
 
