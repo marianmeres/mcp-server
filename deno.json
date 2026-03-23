@@ -1,6 +1,6 @@
 {
   "name": "@marianmeres/mcp-server",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "exports": {
     ".": "./main.ts",
     "./types": "./src/mod.ts"
