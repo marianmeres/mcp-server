@@ -1,1 +1,3 @@
-MCP server that discovers and exposes tools from @marianmeres ecosystem packages. Scans configured package roots for mcp.ts files and registers them as namespaced MCP tools over stdio transport.
+MCP server that discovers and exposes tools from @marianmeres ecosystem packages. 
+Scans configured package roots for mcp.ts files and registers them as namespaced 
+MCP tools over stdio transport.
