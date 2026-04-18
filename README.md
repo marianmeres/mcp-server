@@ -371,7 +371,7 @@ mcp-server/
     lib/
       config.ts        # Config loading (file or env var)
       discovery.ts     # Scans roots, imports mcp.ts files, namespaces tools
-      builtin-tools.ts # The 5 built-in ecosystem tools
+      builtin-tools.ts # The 3 built-in ecosystem tools
       fs-utils.ts      # Filesystem helpers (file existence, safe reads, dir scanning)
 ```
 

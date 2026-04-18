@@ -171,6 +171,87 @@ Deno.test("scanPackageDirs - marker file content is yielded as markerContent", a
 	await Deno.remove(tmpDir, { recursive: true });
 });
 
+Deno.test("discoverPackageTools - dedupes duplicate tool names within a package", async () => {
+	const tmpDir = await Deno.makeTempDir();
+	const pkgDir = join(tmpDir, "dup-pkg");
+	await Deno.mkdir(pkgDir);
+
+	await Deno.writeTextFile(
+		join(pkgDir, "mcp.ts"),
+		`
+import { z } from "zod";
+export const tools = [
+	{ name: "echo", description: "first", params: {}, handler: async () => "first" },
+	{ name: "echo", description: "second", params: {}, handler: async () => "second" },
+	{ name: "other", description: "third", params: {}, handler: async () => "third" },
+];
+`,
+	);
+
+	const tools = await discoverPackageTools([{ path: tmpDir }]);
+	assertEquals(tools.length, 2);
+	const names = tools.map((t) => t.namespacedName).sort();
+	assertEquals(names, ["dup-pkg_echo", "dup-pkg_other"]);
+
+	await Deno.remove(tmpDir, { recursive: true });
+});
+
+Deno.test("discoverPackageTools - skips malformed tool definitions", async () => {
+	const tmpDir = await Deno.makeTempDir();
+	const pkgDir = join(tmpDir, "bad-pkg");
+	await Deno.mkdir(pkgDir);
+
+	// Mix of valid + several malformed entries
+	await Deno.writeTextFile(
+		join(pkgDir, "mcp.ts"),
+		`
+export const tools = [
+	{ name: "good", description: "ok", params: {}, handler: async () => "ok" },
+	{ name: "missing-handler", description: "x", params: {} },
+	{ description: "no name", params: {}, handler: async () => "x" },
+	{ name: "bad-params", description: "x", params: null, handler: async () => "x" },
+	{ name: "bad-desc", description: 42, params: {}, handler: async () => "x" },
+];
+`,
+	);
+
+	const tools = await discoverPackageTools([{ path: tmpDir }]);
+	assertEquals(tools.length, 1);
+	assertEquals(tools[0].namespacedName, "bad-pkg_good");
+
+	await Deno.remove(tmpDir, { recursive: true });
+});
+
+Deno.test("discoverPackageTools - disambiguates roots with the same basename", async () => {
+	const tmpDir = await Deno.makeTempDir();
+	const rootA = join(tmpDir, "a", "packages");
+	const rootB = join(tmpDir, "b", "packages");
+	await Deno.mkdir(join(tmpDir, "a"));
+	await Deno.mkdir(join(tmpDir, "b"));
+	await Deno.mkdir(rootA);
+	await Deno.mkdir(rootB);
+
+	// Same dir name in both roots → collision triggers prefixed naming
+	for (const root of [rootA, rootB]) {
+		await Deno.mkdir(join(root, "shared-pkg"));
+		await Deno.writeTextFile(
+			join(root, "shared-pkg", "mcp.ts"),
+			`export const tools = [{ name: "t", description: "t", params: {}, handler: async () => "ok" }];`,
+		);
+	}
+
+	const tools = await discoverPackageTools([{ path: rootA }, { path: rootB }]);
+	assertEquals(tools.length, 2);
+	const names = tools.map((t) => t.namespacedName).sort();
+	// Both roots have basename "packages"; second should be disambiguated.
+	assertEquals(names, [
+		"packages--shared-pkg_t",
+		"packages-2--shared-pkg_t",
+	]);
+
+	await Deno.remove(tmpDir, { recursive: true });
+});
+
 Deno.test("getPackageInfo - markerContent used as fallback description", async () => {
 	const tmpDir = await Deno.makeTempDir();
 	await Deno.mkdir(join(tmpDir, "my-pkg"));

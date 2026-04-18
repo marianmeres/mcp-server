@@ -106,6 +106,20 @@ Deno.test("loadConfig - normalizes mixed string and object roots", async () => {
 	await Deno.remove(tmpDir, { recursive: true });
 });
 
+Deno.test("loadConfig - throws on malformed JSON with file path in message", async () => {
+	const tmpDir = await Deno.makeTempDir();
+	const configPath = join(tmpDir, "mcp.config.json");
+	await Deno.writeTextFile(configPath, "{ this is not json }");
+
+	await assertRejects(
+		() => loadConfig(["--config", configPath]),
+		Error,
+		"Invalid JSON in",
+	);
+
+	await Deno.remove(tmpDir, { recursive: true });
+});
+
 Deno.test("loadConfig - rejects include + exclude on same root", async () => {
 	const tmpDir = await Deno.makeTempDir();
 	const root = join(tmpDir, "root");

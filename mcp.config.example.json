@@ -1,3 +1,20 @@
 {
-	"packageRoots": ["/path/to/some/packages/", "/path/to/another/packages/"]
+	"packageRoots": [
+		"/absolute/path/to/small-focused-root",
+
+		{
+			"path": "/absolute/path/to/large-monorepo",
+			"marker": "mcp-include.txt"
+		},
+
+		{
+			"path": "/absolute/path/to/another-root",
+			"include": ["pkg-a", "pkg-b"]
+		},
+
+		{
+			"path": "/absolute/path/to/yet-another-root",
+			"exclude": ["legacy-pkg", "deprecated"]
+		}
+	]
 }

@@ -12,11 +12,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { loadConfig } from "./src/lib/config.ts";
 import { discoverPackageTools } from "./src/lib/discovery.ts";
 import { registerBuiltinTools } from "./src/lib/builtin-tools.ts";
+import { getErrorMessage } from "./src/lib/errors.ts";
+import denoJson from "./deno.json" with { type: "json" };
 
 // Load config
 const config = await loadConfig(Deno.args);
 
-const VERSION = "0.1.0";
+const VERSION = denoJson.version;
 console.error(`@marianmeres/mcp-server v${VERSION}`);
 console.error(
 	`Package roots: ${config.packageRoots.map((r) => r.path).join(", ")}`,
@@ -43,7 +45,7 @@ for (const { namespacedName, tool } of packageTools) {
 			description: tool.description,
 			inputSchema: tool.params,
 		},
-		async (params) => {
+		async (params: Record<string, unknown>) => {
 			try {
 				const result = await tool.handler(params);
 				return {
@@ -53,7 +55,7 @@ for (const { namespacedName, tool } of packageTools) {
 				return {
 					content: [{
 						type: "text" as const,
-						text: `Error: ${(error as Error).message}`,
+						text: `Error: ${getErrorMessage(error)}`,
 					}],
 					isError: true,
 				};

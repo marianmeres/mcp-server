@@ -1,5 +1,6 @@
 import { join } from "@std/path";
 import type { PackageRootConfig } from "./config.ts";
+import { getErrorMessage } from "./errors.ts";
 
 /** Check whether a file or directory exists at the given path. */
 export async function fileExists(path: string): Promise<boolean> {
@@ -120,7 +121,7 @@ export async function* scanPackageDirs(
 		}
 	} catch (error) {
 		console.error(
-			`Warning: Could not scan root "${root}": ${(error as Error).message}`,
+			`Warning: Could not scan root "${root}": ${getErrorMessage(error)}`,
 		);
 	}
 }

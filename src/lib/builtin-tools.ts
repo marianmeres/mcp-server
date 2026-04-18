@@ -9,12 +9,39 @@ import {
 	getPackageInfo,
 } from "./fs-utils.ts";
 
+/** Find all matching lines in `content` and return each with ±2 lines of context. */
+export function findMatches(
+	content: string,
+	query: string,
+	caseSensitive: boolean,
+): string[] {
+	const lines = content.split("\n");
+	const needle = caseSensitive ? query : query.toLowerCase();
+	const matches: string[] = [];
+	for (let i = 0; i < lines.length; i++) {
+		const haystack = caseSensitive ? lines[i] : lines[i].toLowerCase();
+		if (!haystack.includes(needle)) continue;
+		const start = Math.max(0, i - 2);
+		const end = Math.min(lines.length - 1, i + 2);
+		const context = lines
+			.slice(start, end + 1)
+			.map(
+				(l, idx) =>
+					`${start + idx === i ? ">" : " "} ${start + idx + 1}: ${l}`,
+			)
+			.join("\n");
+		matches.push(context);
+	}
+	return matches;
+}
+
 /**
- * Register the 5 built-in ecosystem tools on the MCP server.
+ * Register the built-in ecosystem tools on the MCP server.
  *
- * These tools provide ecosystem-level introspection (listing packages,
- * reading docs, searching, etc.) and are always available regardless of
- * whether any packages ship their own `mcp.ts` tools.
+ * These tools (`list-packages`, `get-package-docs`, `search-docs`) provide
+ * ecosystem-level introspection — listing packages, reading docs, searching
+ * across documentation — and are always available regardless of whether any
+ * packages ship their own `mcp.ts` tools.
  */
 export function registerBuiltinTools(
 	server: McpServer,
@@ -35,7 +62,7 @@ export function registerBuiltinTools(
 					),
 			},
 		},
-		async ({ root }) => {
+		async ({ root }: { root?: string }) => {
 			const results: Record<string, unknown>[] = [];
 
 			for (const rootConfig of packageRoots) {
@@ -93,7 +120,7 @@ export function registerBuiltinTools(
 					),
 			},
 		},
-		async ({ packageName }) => {
+		async ({ packageName }: { packageName: string }) => {
 			for (const rootConfig of packageRoots) {
 				for await (const dir of scanPackageDirs(rootConfig)) {
 					if (dir.name !== packageName) continue;
@@ -160,73 +187,59 @@ export function registerBuiltinTools(
 				caseSensitive: z.boolean().optional().default(false),
 			},
 		},
-		async ({ query, caseSensitive }) => {
+		async (
+			{ query, caseSensitive }: { query: string; caseSensitive?: boolean },
+		) => {
 			const results: {
 				root: string;
 				package: string;
 				file: string;
 				matches: string[];
+				totalMatches: number;
+				truncated: boolean;
 			}[] = [];
-			let totalMatches = 0;
 			const MAX_RESULTS = 20;
+			const MAX_MATCHES_PER_FILE = 5;
 
-			for (const rootConfig of packageRoots) {
+			outer: for (const rootConfig of packageRoots) {
 				const rootName = basename(rootConfig.path);
 
 				for await (const dir of scanPackageDirs(rootConfig)) {
-					if (totalMatches >= MAX_RESULTS) break;
+					if (results.length >= MAX_RESULTS) break outer;
 
-					for (const docFile of ["AGENTS.md", "README.md"]) {
-						const content = await readTextFileSafe(
-							join(dir.path, docFile),
+					// Prefer AGENTS.md if present; only fall back to README.md
+					// when AGENTS.md does not exist for this package.
+					const candidates = ["AGENTS.md", "README.md"];
+					let docFile: string | null = null;
+					let content: string | null = null;
+					for (const candidate of candidates) {
+						const c = await readTextFileSafe(
+							join(dir.path, candidate),
 						);
-						if (!content) continue;
-
-						const lines = content.split("\n");
-						const matchingLines: string[] = [];
-
-						for (let i = 0; i < lines.length; i++) {
-							const line = lines[i];
-							const matches = caseSensitive
-								? line.includes(query)
-								: line
-										.toLowerCase()
-										.includes(query.toLowerCase());
-
-							if (matches) {
-								const start = Math.max(0, i - 2);
-								const end = Math.min(
-									lines.length - 1,
-									i + 2,
-								);
-								const context = lines
-									.slice(start, end + 1)
-									.map(
-										(l, idx) =>
-											`${
-												start + idx + 1 === i + 1
-													? ">"
-													: " "
-											} ${start + idx + 1}: ${l}`,
-									)
-									.join("\n");
-								matchingLines.push(context);
-							}
+						if (c !== null) {
+							docFile = candidate;
+							content = c;
+							break;
 						}
-
-						if (matchingLines.length > 0) {
-							results.push({
-								root: rootName,
-								package: dir.name,
-								file: docFile,
-								matches: matchingLines.slice(0, 5),
-							});
-							totalMatches++;
-						}
-
-						// if we found AGENTS.md, don't also search README.md
-						if (content) break;
 					}
+					if (!docFile || content === null) continue;
+
+					const matchingLines = findMatches(
+						content,
+						query,
+						caseSensitive ?? false,
+					);
+					if (matchingLines.length === 0) continue;
+
+					results.push({
+						root: rootName,
+						package: dir.name,
+						file: docFile,
+						matches: matchingLines.slice(0, MAX_MATCHES_PER_FILE),
+						totalMatches: matchingLines.length,
+						truncated:
+							matchingLines.length > MAX_MATCHES_PER_FILE,
+					});
 				}
 			}
 

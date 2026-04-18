@@ -1,6 +1,7 @@
 import { parseArgs } from "@std/cli/parse-args";
 import { resolve, dirname } from "@std/path";
 import { fileExists } from "./fs-utils.ts";
+import { getErrorMessage } from "./errors.ts";
 
 /**
  * Configuration for a single package root directory.
@@ -59,7 +60,14 @@ export async function loadConfig(
 	if (parsed.config) {
 		const configPath = resolve(parsed.config);
 		const raw = await Deno.readTextFile(configPath);
-		const data = JSON.parse(raw);
+		let data: { packageRoots?: unknown };
+		try {
+			data = JSON.parse(raw);
+		} catch (error) {
+			throw new Error(
+				`Invalid JSON in ${configPath}: ${getErrorMessage(error)}`,
+			);
+		}
 
 		if (
 			!Array.isArray(data.packageRoots) ||
