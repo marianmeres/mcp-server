@@ -4,7 +4,6 @@
  * Starts a stdio-based MCP server that discovers and registers tools
  * from configured package roots.
  *
- * @module
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -32,9 +31,7 @@ const server = new McpServer({
 
 // 1. Register built-in ecosystem tools
 registerBuiltinTools(server, config.packageRoots);
-console.error(
-	"Built-in tools: list-packages, get-package-docs, search-docs",
-);
+console.error("Built-in tools: list-packages, get-package-docs, search-docs");
 
 // 2. Discover and register package-provided tools
 const packageTools = await discoverPackageTools(config.packageRoots);
@@ -53,10 +50,12 @@ for (const { namespacedName, tool } of packageTools) {
 				};
 			} catch (error) {
 				return {
-					content: [{
-						type: "text" as const,
-						text: `Error: ${getErrorMessage(error)}`,
-					}],
+					content: [
+						{
+							type: "text" as const,
+							text: `Error: ${getErrorMessage(error)}`,
+						},
+					],
 					isError: true,
 				};
 			}
