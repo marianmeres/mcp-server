@@ -1,7 +1,8 @@
-import { parseArgs } from "@std/cli/parse-args";
-import { resolve, dirname } from "@std/path";
-import { fileExists } from "./fs-utils.ts";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { parseArgs } from "node:util";
 import { getErrorMessage } from "./errors.ts";
+import { fileExists } from "./fs-utils.ts";
 
 /**
  * Configuration for a single package root directory.
@@ -32,12 +33,14 @@ export interface McpServerConfig {
 }
 
 /** Raw config entry: either a plain path string or a full config object. */
-type RawPackageRoot = string | {
-	path: string;
-	include?: string[];
-	exclude?: string[];
-	marker?: string;
-};
+type RawPackageRoot =
+	| string
+	| {
+			path: string;
+			include?: string[];
+			exclude?: string[];
+			marker?: string;
+	  };
 
 /**
  * Load server configuration from CLI args or environment.
@@ -51,60 +54,54 @@ type RawPackageRoot = string | {
  * Relative paths are resolved from the config file's directory.
  * Non-existent roots are warned and skipped.
  */
-export async function loadConfig(
-	args: string[],
-): Promise<McpServerConfig> {
-	const parsed = parseArgs(args, { string: ["config"] });
+export async function loadConfig(args: string[]): Promise<McpServerConfig> {
+	// Lenient on purpose: unknown flags and positionals are ignored, and a bare
+	// `--config` with no value counts as absent.
+	const { values } = parseArgs({
+		args,
+		options: { config: { type: "string" } },
+		strict: false,
+		allowPositionals: true,
+	});
+	const configArg = typeof values.config === "string" ? values.config : "";
 
 	// Option 1: Config file provided via --config
-	if (parsed.config) {
-		const configPath = resolve(parsed.config);
-		const raw = await Deno.readTextFile(configPath);
+	if (configArg) {
+		const configPath = resolve(configArg);
+		const raw = await readFile(configPath, "utf8");
 		let data: { packageRoots?: unknown };
 		try {
 			data = JSON.parse(raw);
 		} catch (error) {
-			throw new Error(
-				`Invalid JSON in ${configPath}: ${getErrorMessage(error)}`,
-			);
+			throw new Error(`Invalid JSON in ${configPath}: ${getErrorMessage(error)}`);
 		}
 
-		if (
-			!Array.isArray(data.packageRoots) ||
-			data.packageRoots.length === 0
-		) {
-			throw new Error(
-				"mcp.config.json must have a non-empty 'packageRoots' array",
-			);
+		if (!Array.isArray(data.packageRoots) || data.packageRoots.length === 0) {
+			throw new Error("mcp.config.json must have a non-empty 'packageRoots' array");
 		}
 
 		const configDir = dirname(configPath);
-		const roots = (data.packageRoots as RawPackageRoot[]).map(
-			(r) => normalizeRoot(r, configDir),
+		const roots = (data.packageRoots as RawPackageRoot[]).map((r) =>
+			normalizeRoot(r, configDir),
 		);
 
 		return { packageRoots: await validateRoots(roots) };
 	}
 
 	// Option 2: Single root via env variable
-	const envRoot = Deno.env.get("MM_PACKAGES_ROOT");
+	const envRoot = process.env.MM_PACKAGES_ROOT;
 	if (envRoot) {
 		const roots = [{ path: resolve(envRoot) }];
 		return { packageRoots: await validateRoots(roots) };
 	}
 
 	// No config provided
-	console.error(
-		"Error: Provide --config <path> or set MM_PACKAGES_ROOT env variable",
-	);
-	Deno.exit(1);
+	console.error("Error: Provide --config <path> or set MM_PACKAGES_ROOT env variable");
+	process.exit(1);
 }
 
 /** Normalize a raw config entry (string or object) into a PackageRootConfig. */
-function normalizeRoot(
-	raw: RawPackageRoot,
-	configDir: string,
-): PackageRootConfig {
+function normalizeRoot(raw: RawPackageRoot, configDir: string): PackageRootConfig {
 	if (typeof raw === "string") {
 		return { path: resolve(configDir, raw) };
 	}
@@ -127,22 +124,18 @@ function normalizeRoot(
 }
 
 /** Validate that root paths exist on disk; warn and skip missing ones. */
-async function validateRoots(
-	roots: PackageRootConfig[],
-): Promise<PackageRootConfig[]> {
+async function validateRoots(roots: PackageRootConfig[]): Promise<PackageRootConfig[]> {
 	const valid: PackageRootConfig[] = [];
 	for (const root of roots) {
 		if (await fileExists(root.path)) {
 			valid.push(root);
 		} else {
-			console.error(
-				`Warning: Package root does not exist, skipping: ${root.path}`,
-			);
+			console.error(`Warning: Package root does not exist, skipping: ${root.path}`);
 		}
 	}
 	if (valid.length === 0) {
 		console.error("Error: No valid package roots found");
-		Deno.exit(1);
+		process.exit(1);
 	}
 	return valid;
 }

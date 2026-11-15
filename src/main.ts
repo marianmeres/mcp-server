@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * Main entrypoint for the @marianmeres/mcp-server.
  *
@@ -6,22 +8,23 @@
  *
  */
 
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { loadConfig } from "./src/lib/config.ts";
-import { discoverPackageTools } from "./src/lib/discovery.ts";
-import { registerBuiltinTools } from "./src/lib/builtin-tools.ts";
-import { getErrorMessage } from "./src/lib/errors.ts";
-import denoJson from "./deno.json" with { type: "json" };
+import { registerBuiltinTools } from "./lib/builtin-tools.ts";
+import { loadConfig } from "./lib/config.ts";
+import { discoverPackageTools } from "./lib/discovery.ts";
+import { getErrorMessage } from "./lib/errors.ts";
 
 // Load config
-const config = await loadConfig(Deno.args);
+const config = await loadConfig(process.argv.slice(2));
 
-const VERSION = denoJson.version;
+// package.json sits one level up from both src/main.ts and dist/main.js
+const { version: VERSION } = JSON.parse(
+	readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
 console.error(`@marianmeres/mcp-server v${VERSION}`);
-console.error(
-	`Package roots: ${config.packageRoots.map((r) => r.path).join(", ")}`,
-);
+console.error(`Package roots: ${config.packageRoots.map((r) => r.path).join(", ")}`);
 
 // Create MCP server
 const server = new McpServer({

@@ -1,12 +1,12 @@
+import { basename, join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { join, basename } from "@std/path";
 import type { PackageRootConfig } from "./config.ts";
 import {
 	fileExists,
+	getPackageInfo,
 	readTextFileSafe,
 	scanPackageDirs,
-	getPackageInfo,
 } from "./fs-utils.ts";
 
 /** Find all matching lines in `content` and return each with ±2 lines of context. */
@@ -18,17 +18,14 @@ export function findMatches(
 	const lines = content.split("\n");
 	const needle = caseSensitive ? query : query.toLowerCase();
 	const matches: string[] = [];
-	for (let i = 0; i < lines.length; i++) {
-		const haystack = caseSensitive ? lines[i] : lines[i].toLowerCase();
+	for (const [i, line] of lines.entries()) {
+		const haystack = caseSensitive ? line : line.toLowerCase();
 		if (!haystack.includes(needle)) continue;
 		const start = Math.max(0, i - 2);
 		const end = Math.min(lines.length - 1, i + 2);
 		const context = lines
 			.slice(start, end + 1)
-			.map(
-				(l, idx) =>
-					`${start + idx === i ? ">" : " "} ${start + idx + 1}: ${l}`,
-			)
+			.map((l, idx) => `${start + idx === i ? ">" : " "} ${start + idx + 1}: ${l}`)
 			.join("\n");
 		matches.push(context);
 	}
@@ -57,9 +54,7 @@ export function registerBuiltinTools(
 				root: z
 					.string()
 					.optional()
-					.describe(
-						"Filter to a specific root by its directory name",
-					),
+					.describe("Filter to a specific root by its directory name"),
 			},
 		},
 		async ({ root }: { root?: string }) => {
@@ -70,13 +65,13 @@ export function registerBuiltinTools(
 				if (root && rootName !== root) continue;
 
 				for await (const dir of scanPackageDirs(rootConfig)) {
-					const info = await getPackageInfo(dir.path, dir.name, dir.markerContent);
-					const hasAgentsDocs = await fileExists(
-						join(dir.path, "AGENTS.md"),
+					const info = await getPackageInfo(
+						dir.path,
+						dir.name,
+						dir.markerContent,
 					);
-					const hasMcpTs = await fileExists(
-						join(dir.path, "mcp.ts"),
-					);
+					const hasAgentsDocs = await fileExists(join(dir.path, "AGENTS.md"));
+					const hasMcpTs = await fileExists(join(dir.path, "mcp.ts"));
 
 					results.push({
 						root: rootName,
@@ -90,9 +85,7 @@ export function registerBuiltinTools(
 			}
 
 			results.sort((a, b) =>
-				`${a.root}/${a.dirName}`.localeCompare(
-					`${b.root}/${b.dirName}`,
-				),
+				`${a.root}/${a.dirName}`.localeCompare(`${b.root}/${b.dirName}`),
 			);
 
 			return {
@@ -139,9 +132,7 @@ export function registerBuiltinTools(
 						};
 					}
 
-					const readme = await readTextFileSafe(
-						join(dir.path, "README.md"),
-					);
+					const readme = await readTextFileSafe(join(dir.path, "README.md"));
 					if (readme) {
 						return {
 							content: [
@@ -187,9 +178,7 @@ export function registerBuiltinTools(
 				caseSensitive: z.boolean().optional().default(false),
 			},
 		},
-		async (
-			{ query, caseSensitive }: { query: string; caseSensitive?: boolean },
-		) => {
+		async ({ query, caseSensitive }: { query: string; caseSensitive?: boolean }) => {
 			const results: {
 				root: string;
 				package: string;
@@ -213,9 +202,7 @@ export function registerBuiltinTools(
 					let docFile: string | null = null;
 					let content: string | null = null;
 					for (const candidate of candidates) {
-						const c = await readTextFileSafe(
-							join(dir.path, candidate),
-						);
+						const c = await readTextFileSafe(join(dir.path, candidate));
 						if (c !== null) {
 							docFile = candidate;
 							content = c;
@@ -237,8 +224,7 @@ export function registerBuiltinTools(
 						file: docFile,
 						matches: matchingLines.slice(0, MAX_MATCHES_PER_FILE),
 						totalMatches: matchingLines.length,
-						truncated:
-							matchingLines.length > MAX_MATCHES_PER_FILE,
+						truncated: matchingLines.length > MAX_MATCHES_PER_FILE,
 					});
 				}
 			}
@@ -264,5 +250,4 @@ export function registerBuiltinTools(
 			};
 		},
 	);
-
 }

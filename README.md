@@ -1,7 +1,10 @@
 # @marianmeres/mcp-server
 
+[![NPM](https://img.shields.io/npm/v/@marianmeres/mcp-server)](https://www.npmjs.com/package/@marianmeres/mcp-server)
+[![License](https://img.shields.io/npm/l/@marianmeres/mcp-server)](LICENSE)
+
 A plugin-based [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) server for
-Deno that gives AI coding agents instant access to your package ecosystem — documentation,
+Node that gives AI coding agents instant access to your package ecosystem — documentation,
 tools, and domain-specific capabilities — without manual file reading every session.
 
 ## What It Does
@@ -34,15 +37,24 @@ With this server, the agent can:
 
 ## Installation
 
-Available on [JSR](https://jsr.io/@marianmeres/mcp-server):
+Requires Node 24.12 or newer (it loads package `mcp.ts` files with Node's built-in type
+stripping). Available on [npm](https://www.npmjs.com/package/@marianmeres/mcp-server):
 
 ```bash
 # Run directly (recommended — it's a server, not a library dependency)
-deno run -A jsr:@marianmeres/mcp-server --config ./mcp.config.json
+npx -y @marianmeres/mcp-server@^2 --config ./mcp.config.json
 
-# Or import the type definition for writing package tools
-import type { McpToolDefinition } from "jsr:@marianmeres/mcp-server/types";
+# Or add the type definition for writing package tools
+npm install -D @marianmeres/mcp-server
 ```
+
+Pin the major (`@^2`): a bare `npx @marianmeres/mcp-server` may keep reusing whatever
+version sits in the npx cache.
+
+> **Upgrading from 1.x (Deno, JSR):** 2.x runs on Node and is published to npm. The 1.x line
+> stays on JSR for `deno run -A jsr:@marianmeres/mcp-server@1`. Package `mcp.ts` files
+> written for Deno (`npm:` / `jsr:` imports, `Deno.*` calls) do not load under Node; see
+> [Plugin requirements](#plugin-requirements).
 
 ## Quick Start
 
@@ -53,10 +65,7 @@ packages:
 
 ```json
 {
-    "packageRoots": [
-        "/path/to/your/packages",
-        "/path/to/other/packages"
-    ]
+	"packageRoots": ["/path/to/your/packages", "/path/to/other/packages"]
 }
 ```
 
@@ -69,24 +78,20 @@ For **Claude Code** (globally, available in all projects):
 
 ```bash
 claude mcp add --scope user my-mcp-server -- \
-    deno run -A jsr:@marianmeres/mcp-server --config /absolute/path/to/mcp.config.json
+    npx -y @marianmeres/mcp-server@^2 --config /absolute/path/to/mcp.config.json
 ```
 
 For **Claude Code** (project-scoped), create `.mcp.json` in the project root:
 
 ```json
 {
-    "mcpServers": {
-        "my-mcp-server": {
-            "type": "stdio",
-            "command": "deno",
-            "args": [
-                "run", "-A",
-                "jsr:@marianmeres/mcp-server",
-                "--config", "./mcp.config.json"
-            ]
-        }
-    }
+	"mcpServers": {
+		"my-mcp-server": {
+			"type": "stdio",
+			"command": "npx",
+			"args": ["-y", "@marianmeres/mcp-server@^2", "--config", "./mcp.config.json"]
+		}
+	}
 }
 ```
 
@@ -99,18 +104,22 @@ For **Claude Desktop** (Cowork), add to
 
 ```json
 {
-    "mcpServers": {
-        "my-mcp-server": {
-            "command": "deno",
-            "args": [
-                "run", "-A",
-                "jsr:@marianmeres/mcp-server",
-                "--config", "/absolute/path/to/mcp.config.json"
-            ]
-        }
-    }
+	"mcpServers": {
+		"my-mcp-server": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@marianmeres/mcp-server@^2",
+				"--config",
+				"/absolute/path/to/mcp.config.json"
+			]
+		}
+	}
 }
 ```
+
+To run from a local clone instead, use `node /path/to/mcp-server/src/main.ts` as the
+command (after `pnpm install` in the clone).
 
 ### 3. Start using it
 
@@ -125,11 +134,11 @@ things like:
 
 These tools are always available, regardless of whether any packages ship their own tools:
 
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `list-packages` | `root?` (optional filter) | List all packages with names, descriptions, and tool availability |
-| `get-package-docs` | `packageName` (required) | Read a package's `AGENTS.md` (falls back to `README.md`) |
-| `search-docs` | `query`, `caseSensitive?` | Full-text search across all package documentation (max 20 results) |
+| Tool               | Parameters                | Description                                                        |
+| ------------------ | ------------------------- | ------------------------------------------------------------------ |
+| `list-packages`    | `root?` (optional filter) | List all packages with names, descriptions, and tool availability  |
+| `get-package-docs` | `packageName` (required)  | Read a package's `AGENTS.md` (falls back to `README.md`)           |
+| `search-docs`      | `query`, `caseSensitive?` | Full-text search across all package documentation (max 20 results) |
 
 ## Adding Tools to a Package
 
@@ -138,21 +147,21 @@ exports an array of tool definitions:
 
 ```typescript
 // my-package/mcp.ts
-import { z } from "npm:zod";
-import type { McpToolDefinition } from "jsr:@marianmeres/mcp-server/types";
+import { z } from "zod";
+import type { McpToolDefinition } from "@marianmeres/mcp-server/types";
 
 export const tools: McpToolDefinition[] = [
-    {
-        name: "health-check",
-        description: "Check if the service is running",
-        params: {
-            url: z.string().describe("Service URL"),
-        },
-        handler: async ({ url }) => {
-            const res = await fetch(`${url}/health`);
-            return `Status: ${res.status}`;
-        },
-    },
+	{
+		name: "health-check",
+		description: "Check if the service is running",
+		params: {
+			url: z.string().describe("Service URL"),
+		},
+		handler: async ({ url }) => {
+			const res = await fetch(`${url}/health`);
+			return `Status: ${res.status}`;
+		},
+	},
 ];
 ```
 
@@ -169,16 +178,39 @@ Key points:
 - Only `zod` is needed as a dependency — no MCP SDK knowledge required
 - Restart the MCP server to pick up new tools
 
+### Plugin requirements
+
+The server imports each `mcp.ts` straight from source with Node, so the file and
+everything it imports must be loadable by Node:
+
+- **Dependencies resolve from the package, not from the server.** Add `zod` to the
+  package's own `package.json` (a devDependency is enough) and install it. The
+  `@marianmeres/mcp-server/types` import is type-only and erased at load time, so it needs
+  no install unless you type-check the file.
+- **Use zod 3 (`^3.25.76`).** Zod 4 schemas validate fine, but their `.describe()` texts
+  are dropped from the tool's parameter schema: zod 4 keeps them in a registry private to
+  each zod copy, which the server cannot read.
+- **Erasable TypeScript only.** Node strips types and never compiles: no `enum`,
+  `namespace` or constructor parameter properties; use `import type` for type-only
+  imports; write relative imports with their `.ts` extension.
+- **No runtime-specific specifiers or globals.** No `npm:`, `jsr:` or `https:` imports, no
+  `Deno.*`. Use web standards, and `node:*` modules where they don't reach.
+- **Not under `node_modules`.** Node refuses to strip types there, so a package root must
+  not point inside one.
+
+A `mcp.ts` that fails any of these is skipped with a warning on stderr; the server and
+the other tools keep running.
+
 ### The McpToolDefinition Type
 
 ```typescript
 import type { z } from "zod";
 
 interface McpToolDefinition {
-    name: string;
-    description: string;
-    params: Record<string, z.ZodType>;
-    handler: (args: Record<string, unknown>) => Promise<string>;
+	name: string;
+	description: string;
+	params: Record<string, z.ZodType>;
+	handler: (args: Record<string, unknown>) => Promise<string>;
 }
 ```
 
@@ -232,10 +264,7 @@ The simplest form — scan everything under each root:
 
 ```json
 {
-    "packageRoots": [
-        "/absolute/path/to/packages",
-        "./relative/path/also/works"
-    ]
+	"packageRoots": ["/absolute/path/to/packages", "./relative/path/also/works"]
 }
 ```
 
@@ -243,7 +272,7 @@ Relative paths are resolved from the config file's location. Pass the config fil
 `--config`:
 
 ```bash
-deno run -A jsr:@marianmeres/mcp-server --config ./mcp.config.json
+npx -y @marianmeres/mcp-server@^2 --config ./mcp.config.json
 ```
 
 ### Filtering packages
@@ -256,9 +285,9 @@ options:
 
 ```json
 {
-    "packageRoots": [
-        { "path": "/path/to/packages", "include": ["store", "demino", "collection"] }
-    ]
+	"packageRoots": [
+		{ "path": "/path/to/packages", "include": ["store", "demino", "collection"] }
+	]
 }
 ```
 
@@ -266,9 +295,9 @@ options:
 
 ```json
 {
-    "packageRoots": [
-        { "path": "/path/to/packages", "exclude": ["legacy-thing", "deprecated-pkg"] }
-    ]
+	"packageRoots": [
+		{ "path": "/path/to/packages", "exclude": ["legacy-thing", "deprecated-pkg"] }
+	]
 }
 ```
 
@@ -276,9 +305,7 @@ options:
 
 ```json
 {
-    "packageRoots": [
-        { "path": "/path/to/packages", "marker": "mcp-include.txt" }
-    ]
+	"packageRoots": [{ "path": "/path/to/packages", "marker": "mcp-include.txt" }]
 }
 ```
 
@@ -303,11 +330,11 @@ exclusive.
 
 ```json
 {
-    "packageRoots": [
-        "/path/to/small-focused-root",
-        { "path": "/path/to/large-root", "marker": "mcp-include.txt" },
-        { "path": "/path/to/another-root", "include": ["pkg-a", "pkg-b"] }
-    ]
+	"packageRoots": [
+		"/path/to/small-focused-root",
+		{ "path": "/path/to/large-root", "marker": "mcp-include.txt" },
+		{ "path": "/path/to/another-root", "include": ["pkg-a", "pkg-b"] }
+	]
 }
 ```
 
@@ -316,7 +343,7 @@ exclusive.
 For quick setup with a single package root:
 
 ```bash
-MM_PACKAGES_ROOT=/path/to/packages deno run -A jsr:@marianmeres/mcp-server
+MM_PACKAGES_ROOT=/path/to/packages npx -y @marianmeres/mcp-server@^2
 ```
 
 ### Per-project configuration
@@ -336,17 +363,24 @@ collision and uses a longer prefix: `root-name--package-name_tool-name`.
 > **Note:** MCP tool names may only contain `[a-z0-9_-]`. The server uses `_` (underscore)
 > as the namespace separator to comply with this constraint.
 
-## Running & Testing
+## Security
+
+Package tools run inside the server process with its full privileges: file system,
+network, environment. There is no sandbox, so only point package roots at code you trust.
+
+## Development
 
 ```bash
-# Start the server (for development)
-deno task start --config ./mcp.config.json
+pnpm install
+
+# Start the server from source
+pnpm start --config ./mcp.config.json
 
 # Open the MCP Inspector (interactive web UI for testing tools)
-deno task inspect
+pnpm run inspect
 
-# Run tests
-deno task test
+# Typecheck, lint and test (the CI gate)
+pnpm run ci
 ```
 
 The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is the easiest way
@@ -357,34 +391,25 @@ You can also send raw JSON-RPC to test:
 
 ```bash
 printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n' \
-  | deno run -A jsr:@marianmeres/mcp-server --config ./mcp.config.json
+  | node src/main.ts --config ./mcp.config.json
 ```
 
 ## Architecture
 
 ```
 mcp-server/
-  main.ts              # Entry point — loads config, discovers plugins, starts stdio
-  types.ts             # McpToolDefinition type (imported by packages)
   src/
-    mod.ts             # Library export (re-exports types for JSR consumers)
+    main.ts            # Entry point (npm bin) — loads config, discovers plugins, starts stdio
+    types.ts           # McpToolDefinition type (imported by packages)
+    mod.ts             # Library export (`@marianmeres/mcp-server/types`)
     lib/
       config.ts        # Config loading (file or env var)
       discovery.ts     # Scans roots, imports mcp.ts files, namespaces tools
       builtin-tools.ts # The 3 built-in ecosystem tools
       fs-utils.ts      # Filesystem helpers (file existence, safe reads, dir scanning)
+      errors.ts        # Error message extraction
 ```
-
-## Deno Permissions
-
-The server needs:
-
-- `--allow-read` — reading config, package files, documentation
-- `--allow-env` — reading `MM_PACKAGES_ROOT` (env var fallback)
-- `--allow-net` — for package tools that make network requests
-
-Using `-A` (all permissions) is simplest for a local development tool.
 
 ## License
 
-MIT
+[MIT](LICENSE)

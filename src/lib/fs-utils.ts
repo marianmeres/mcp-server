@@ -1,11 +1,12 @@
-import { join } from "@std/path";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
 import type { PackageRootConfig } from "./config.ts";
 import { getErrorMessage } from "./errors.ts";
 
 /** Check whether a file or directory exists at the given path. */
 export async function fileExists(path: string): Promise<boolean> {
 	try {
-		await Deno.stat(path);
+		await stat(path);
 		return true;
 	} catch {
 		return false;
@@ -13,11 +14,9 @@ export async function fileExists(path: string): Promise<boolean> {
 }
 
 /** Read a text file, returning `null` instead of throwing on error. */
-export async function readTextFileSafe(
-	path: string,
-): Promise<string | null> {
+export async function readTextFileSafe(path: string): Promise<string | null> {
 	try {
-		return await Deno.readTextFile(path);
+		return await readFile(path, "utf8");
 	} catch {
 		return null;
 	}
@@ -85,9 +84,9 @@ export async function* scanPackageDirs(
 	const { path: root, include, exclude, marker } = rootConfig;
 
 	try {
-		for await (const entry of Deno.readDir(root)) {
+		for (const entry of await readdir(root, { withFileTypes: true })) {
 			if (
-				!entry.isDirectory ||
+				!entry.isDirectory() ||
 				entry.name.startsWith(".") ||
 				entry.name === "node_modules"
 			) {
@@ -100,7 +99,7 @@ export async function* scanPackageDirs(
 			}
 
 			// exclude filter
-			if (exclude && exclude.includes(entry.name)) {
+			if (exclude?.includes(entry.name)) {
 				continue;
 			}
 

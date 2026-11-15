@@ -1,8 +1,9 @@
-import type { McpToolDefinition } from "../../types.ts";
+import { basename, join } from "node:path";
+import { pathToFileURL } from "node:url";
+import type { McpToolDefinition } from "../types.ts";
 import type { PackageRootConfig } from "./config.ts";
-import { basename, join } from "@std/path";
-import { fileExists, scanPackageDirs } from "./fs-utils.ts";
 import { getErrorMessage } from "./errors.ts";
+import { fileExists, scanPackageDirs } from "./fs-utils.ts";
 
 /** A tool definition discovered from a package's `mcp.ts` file. */
 export interface DiscoveredTool {
@@ -77,10 +78,7 @@ export async function discoverPackageTools(
 
 	for (const rootConfig of packageRoots) {
 		for await (const dir of scanPackageDirs(rootConfig)) {
-			dirNameCounts.set(
-				dir.name,
-				(dirNameCounts.get(dir.name) ?? 0) + 1,
-			);
+			dirNameCounts.set(dir.name, (dirNameCounts.get(dir.name) ?? 0) + 1);
 		}
 	}
 
@@ -88,9 +86,8 @@ export async function discoverPackageTools(
 	const seenNamespaced = new Set<string>();
 
 	// Second pass: discover and import tools
-	for (let i = 0; i < packageRoots.length; i++) {
-		const rootConfig = packageRoots[i];
-		const rootName = rootNames[i];
+	for (const [i, rootConfig] of packageRoots.entries()) {
+		const rootName = rootNames[i] ?? basename(rootConfig.path);
 		console.error(`Scanning: ${rootConfig.path}`);
 
 		for await (const dir of scanPackageDirs(rootConfig)) {
@@ -100,19 +97,16 @@ export async function discoverPackageTools(
 			}
 
 			// determine namespace prefix
-			const hasCollision =
-				(dirNameCounts.get(dir.name) ?? 0) > 1;
-			const prefix = hasCollision
-				? `${rootName}--${dir.name}`
-				: dir.name;
+			const hasCollision = (dirNameCounts.get(dir.name) ?? 0) > 1;
+			const prefix = hasCollision ? `${rootName}--${dir.name}` : dir.name;
 
 			try {
-				const mod = await import(`file://${mcpPath}`);
+				const mod = await import(pathToFileURL(mcpPath).href);
 				const tools: unknown = Array.isArray(mod.tools)
 					? mod.tools
 					: Array.isArray(mod.default)
-					? mod.default
-					: null;
+						? mod.default
+						: null;
 
 				if (!Array.isArray(tools)) {
 					console.error(

@@ -9,8 +9,8 @@ import type { z } from "zod";
  *
  * @example
  * ```typescript
- * import { z } from "npm:zod";
- * import type { McpToolDefinition } from "jsr:@marianmeres/mcp-server/types";
+ * import { z } from "zod";
+ * import type { McpToolDefinition } from "@marianmeres/mcp-server/types";
  *
  * export const tools: McpToolDefinition[] = [
  *   {
